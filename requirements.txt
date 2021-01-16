@@ -1,5 +1,6 @@
 pandas==1.0.0
 Flask==1.1.2
+gunicorn==19.9.0
 Flask-Testing==0.8.0
 google-api-core==1.24.1
 google-auth==1.24.0
