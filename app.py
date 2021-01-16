@@ -8,7 +8,7 @@ from google.auth.transport import requests
 import json
 import csv
 from werkzeug.wrappers import Response
-from datetime import datetime
+from datetime import datetime,timedelta
 from io import StringIO
 from google.cloud import bigquery
 import os
@@ -133,6 +133,52 @@ def GetConvertionRateCSV(days):
     # add a filename
     response.headers.set("Content-Disposition", "attachment", filename="convertion_rate.csv")
     return response
+
+@app.route('/big-query/order-convertion-rate-previous-period/device/usertype/<int:days>', methods=['GET'])
+def GetComparisonConvertionRateDeviceUserType(days):
+    print('days ', days)
+    """List of query browser"""
+    print('List all query details')
+    
+    sql = """SELECT SUM(totals.transactions)/SUM(totals.visits) AS conversion_rate, device.deviceCategory AS device,IF(totals.newVisits IS NOT NULL, "New Visitor", "Returning Visitor") userType,
+        FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+        WHERE _TABLE_SUFFIX BETWEEN
+        FORMAT_DATE("%Y%m%d", DATE_SUB("2017-08-01", INTERVAL {} DAY)) AND
+        FORMAT_DATE("%Y%m%d", "2017-08-01")
+        group by  device,userType
+        order by device""".format(days)
+    
+    given = '01-08-2017'
+    date_object = datetime.strptime(given, '%d-%m-%Y').date()
+    n_days_ago = date_object - timedelta(days=days)
+    datep = n_days_ago.strftime('%d-%m-%Y')
+    final = datep + "||"+given
+    df = client.query(sql).to_dataframe()
+    df['Period']=final
+    
+    new_date = date_object - timedelta(days=int(days+1))
+    print(new_date)
+    sql2 = """
+        SELECT SUM(totals.transactions)/SUM(totals.visits) AS conversion_rate, device.deviceCategory AS device,IF(totals.newVisits IS NOT NULL, "New Visitor", "Returning Visitor") userType,
+        FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+        WHERE _TABLE_SUFFIX BETWEEN
+        FORMAT_DATE("%Y%m%d", DATE_SUB("{date}", INTERVAL {D} DAY)) AND
+        FORMAT_DATE("%Y%m%d", "{date}")
+        group by  device,userType
+        order by device
+    """.format(**{"D": days, "date": new_date})
+    
+    date_object2 = datetime.strptime(str(new_date), '%Y-%m-%d').date()
+    n_days_ago2 = date_object2 - timedelta(days=days)
+    datep2 = n_days_ago2.strftime('%Y-%m-%d')
+    final2 = str(new_date)+ "||"+datep2
+    df2 = client.query(sql2).to_dataframe()
+    df2['Period']=final2
+    
+    df3 = df.append(df2, ignore_index=True)
+    
+    return Response(df3.to_json(orient="records"), mimetype='application/json')
+
 
 @app.route('/big-query/get-user-profile/<int:id>', methods=['GET'])
 def GetUserDetails(id):
