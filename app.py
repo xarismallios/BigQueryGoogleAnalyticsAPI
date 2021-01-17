@@ -57,54 +57,46 @@ def GetConversionRate(days):
     response.status_code = 201
     return response
 
-@app.route('/big-query/order-convertion-rate-previous-period/<int:days>', methods=['GET'])
-def GetComparisonConvertionRate(days):
+@app.route('/report/compare-periods/<int:days>', methods=['GET'])
+def GetComparisonConvertionRatePeriod(days):
     print('days ', days)
     """List of query browser"""
     print('List all query details')
-    sql = """
-                SELECT
-                SUM( totals.transactions ) as total_transactions,
-                SUM( totals.visits )  as total_visits
-                FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*`
-                WHERE
-                _TABLE_SUFFIX BETWEEN
-                FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-01'), INTERVAL {} DAY)) AND
-                FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-01'), INTERVAL 1 DAY));
-    """.format(days)
-    df = client.query(sql).to_dataframe()
-    data = df.to_json()
-    data = json.loads(data)
-    total_transactions = data['total_transactions']['0']
-    total_visits = data['total_visits']['0']
-
-    days2 = int(days)*2
-    sql2 = """
-        SELECT
-        SUM( totals.transactions ) as total_transactions,
-        SUM( totals.visits )  as total_visits
+    
+    sql = """SELECT SUM(totals.transactions)/SUM(totals.visits) AS conversion_rate,
         FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*`
-        WHERE
-        _TABLE_SUFFIX BETWEEN
-        FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-01'), INTERVAL {} DAY)) AND
-        FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-01'), INTERVAL {} DAY));
-    """.format(days2, days)
-
+        WHERE _TABLE_SUFFIX BETWEEN
+        FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-02'), INTERVAL {} DAY)) AND
+        FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-02'), INTERVAL 1 DAY));""".format(days)
+    
+    given = '01-08-2017'
+    date_object = datetime.strptime(given, '%d-%m-%Y').date()
+    n_days_ago = date_object - timedelta(days=days)
+    datep = n_days_ago.strftime('%d-%m-%Y')
+    final = datep + "||"+given
+    df = client.query(sql).to_dataframe()
+    df['Period']=final
+    
+    new_date = date_object - timedelta(days=int(days+1))
+    print(new_date)
+    sql2 = """
+        SELECT SUM(totals.transactions)/SUM(totals.visits) AS conversion_rate,
+        FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+        WHERE _TABLE_SUFFIX BETWEEN
+        FORMAT_DATE("%Y%m%d", DATE_SUB("{date}", INTERVAL {D} DAY)) AND
+        FORMAT_DATE("%Y%m%d", "{date}")""".format(**{"D": days, "date": new_date})
+    
+    date_object2 = datetime.strptime(str(new_date), '%Y-%m-%d').date()
+    n_days_ago2 = date_object2 - timedelta(days=days)
+    datep2 = n_days_ago2.strftime('%Y-%m-%d')
+    final2 = str(new_date)+ "||"+datep2
     df2 = client.query(sql2).to_dataframe()
-    data2 = df2.to_json()
-    data2 = json.loads(data2)
-    total_transactions2 = data2['total_transactions']['0']
-    total_visits2 = data2['total_visits']['0']
+    df2['Period']=final2
+    
+    df3 = df.append(df2, ignore_index=True)
+    
+    return Response(df3.to_json(orient="records"), mimetype='application/json')
 
-    print('---------------- ',data['total_transactions']['0'])
-
-    response = jsonify({
-        'status': 'success',
-        'convertion_rate': float(total_transactions)/float(total_visits),
-        'convertion_rate_period_before': float(total_transactions2)/float(total_visits2)
-        })
-    response.status_code = 201
-    return response
 
 
 @app.route('/big-query/order-convertion-rate/<int:days>/csv', methods=['GET'])
