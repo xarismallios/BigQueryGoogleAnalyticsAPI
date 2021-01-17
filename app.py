@@ -143,36 +143,38 @@ def GetComparisonConvertionRateDeviceUserType(days):
     
     return Response(df3.to_json(orient="records"), mimetype='application/json')
 
-@app.route('/big-query/order-convertion-rate/<int:days>/csv', methods=['GET'])
+
+@app.route('/report/cvr/<int:days>/csv', methods=['GET'])
 def GetConvertionRateCSV(days):
     print('days ', days)
-    """List of query browser"""
-    print('List all query details')
-
     sql = """
-                SELECT
-                SUM( totals.transactions ) as total_transactions,
-                SUM( totals.visits )  as total_visits
-                FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*`
-                WHERE
-                _TABLE_SUFFIX BETWEEN
-                FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-01'), INTERVAL {} DAY)) AND
-                FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-01'), INTERVAL 1 DAY));
+                    SELECT
+                    SUM( totals.transactions )/SUM( totals.visits ) as cvr
+                    FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*`
+                    WHERE
+                    _TABLE_SUFFIX BETWEEN
+                    FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-02'), INTERVAL {} DAY)) AND
+                    FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-02'), INTERVAL 1 DAY));
     """.format(days)
     df = client.query(sql).to_dataframe()
     data = df.to_json()
     data = json.loads(data)
-    total_transactions = data['total_transactions']['0']
-    total_visits = data['total_visits']['0']
-    convertion_rate = float(total_transactions)/float(total_visits)
+    cvr = data['cvr']['0']
+    
+    given = '01-08-2017'
+    date_object = datetime.strptime(given, '%d-%m-%Y').date()
+    n_days_ago = date_object - timedelta(days=days)
+    datep = n_days_ago.strftime('%d-%m-%Y')
+    final = datep + "||"+given
+
 
     log = [
-        ('1', convertion_rate)
+        (str(final), cvr)
     ]
 
     response = Response(generate(log), mimetype='text/csv')
     # add a filename
-    response.headers.set("Content-Disposition", "attachment", filename="convertion_rate.csv")
+    response.headers.set("Content-Disposition", "attachment", filename="conversion_rate.csv")
     return response
 
 @app.route('/big-query/order-convertion-rate-previous-period/device/usertype/<int:days>', methods=['GET'])
@@ -303,7 +305,7 @@ def generate(log):
     w = csv.writer(data)
 
     # write header
-    w.writerow(('No', 'Convertion_Rate'))
+    w.writerow(('No', 'Conversion_Rate'))
     yield data.getvalue()
     data.seek(0)
     data.truncate(0)
