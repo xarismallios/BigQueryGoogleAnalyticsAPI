@@ -266,7 +266,7 @@ def generate(log):
     w = csv.writer(data)
 
     # write header
-    w.writerow(('No', 'Conversion_Rate'))
+    w.writerow(('Period', 'Conversion_Rate'))
     yield data.getvalue()
     data.seek(0)
     data.truncate(0)
