@@ -258,7 +258,7 @@ def GetUserDetails(id):
                                                 },
                                     }],
                            "sessionId": data['visitId']['0'],
-                           "sessionDate": datetime.datetime.fromtimestamp(int(data['visitStartTime']['0']) / 1e3),
+                           "sessionDate": datetime.datetime.fromtimestamp(int(data['visitStartTime']['0']) / 1e3)
                     }
             })
             response.status_code = 201
