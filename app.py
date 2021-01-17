@@ -184,7 +184,7 @@ def GetConvertionRateCSV(days):
 
 
 
-@app.route('/big-query/get-user-profile/<int:id>', methods=['GET'])
+@app.route('/report/userprofile/<int:id>', methods=['GET'])
 def GetUserDetails(id):
     print('profile id ', id)
     """List of query browser"""
