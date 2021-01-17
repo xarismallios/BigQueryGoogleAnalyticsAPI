@@ -24,31 +24,36 @@ app = Flask(__name__)
 def index():
     return "Hello, efooder!"
 
-@app.route('/big-query/order-convertion-rate/<int:days>', methods=['GET'])
-def GetConvertionRate(days):
+
+@app.route('/report/cvr/<int:days>', methods=['GET'])
+def GetConversionRate(days):
     print('days ', days)
     sql = """
                     SELECT
-                    SUM( totals.transactions ) as total_transactions,
-                    SUM( totals.visits )  as total_visits
+                    SUM( totals.transactions )/SUM( totals.visits ) as cvr
                     FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*`
                     WHERE
                     _TABLE_SUFFIX BETWEEN
-                    FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-01'), INTERVAL {} DAY)) AND
-                    FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-01'), INTERVAL 1 DAY));
+                    FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-02'), INTERVAL {} DAY)) AND
+                    FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-02'), INTERVAL 1 DAY));
     """.format(days)
     df = client.query(sql).to_dataframe()
     data = df.to_json()
     data = json.loads(data)
-    total_transactions = data['total_transactions']['0']
-    total_visits = data['total_visits']['0']
+    cvr = data['cvr']['0']
+    
+    given = '01-08-2017'
+    date_object = datetime.strptime(given, '%d-%m-%Y').date()
+    n_days_ago = date_object - timedelta(days=days)
+    datep = n_days_ago.strftime('%d-%m-%Y')
+    final = datep + "||"+given
 
-    print('---------------- ',data['total_transactions']['0'])
 
     response = jsonify({
         'status': 'success',
-        'convertion_rate': float(total_transactions)/float(total_visits)
-        })
+        'conversion_rate': float(cvr),
+        'period':str(final)
+    })
     response.status_code = 201
     return response
 
