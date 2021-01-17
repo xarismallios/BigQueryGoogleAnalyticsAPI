@@ -257,6 +257,8 @@ def GetUserDetails(id):
                                                     "products": product_list_arr
                                                 },
                                     }],
+                           "sessionId": data['visitId']['0'],
+                           "sessionDate": datetime.datetime.fromtimestamp(int(data['visitStartTime']['0']) / 1e3),
                     }
             })
             response.status_code = 201
