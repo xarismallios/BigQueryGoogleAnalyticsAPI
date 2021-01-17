@@ -102,51 +102,53 @@ def GetComparisonConvertionRatePeriod(days):
     return Response(df3.to_json(orient="records"), mimetype='application/json')
 
 
-@app.route('/report/cvr/periods/device/usertype/<int:days>', methods=['GET'])
+@app.route('/report/cvr/compare-periods/device/usertype/<int:days>', methods=['GET'])
 def GetComparisonConvertionRateDeviceUserType(days):
     print('days ', days)
     """List of query browser"""
     print('List all query details')
-    
-    sql = """SELECT SUM(totals.transactions)/SUM(totals.visits) AS conversion_rate, device.deviceCategory AS device,IF(totals.newVisits IS NOT NULL, "New Visitor", "Returning Visitor") userType,
+
+    sql = """SELECT SUM(totals.transactions)/SUM(totals.visits) AS conversion_rate,device.deviceCategory AS device,IF(totals.newVisits IS NOT NULL, "New Visitor", "Returning Visitor") userType,
         FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*`
         WHERE _TABLE_SUFFIX BETWEEN
         FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-02'), INTERVAL {} DAY)) AND
         FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-02'), INTERVAL 1 DAY))
         group by  device,userType
-        order by device""".format(days)
-    
-    given = '01-08-2017'
+        order by device;""".format(days)
+
+    given = '02-08-2017'
     date_object = datetime.strptime(given, '%d-%m-%Y').date()
     n_days_ago = date_object - timedelta(days=days)
+    n_days_ago2 = date_object - timedelta(days=1)
+    dates= n_days_ago2.strftime('%d-%m-%Y')
     datep = n_days_ago.strftime('%d-%m-%Y')
-    final = datep + "||"+given
+    final = datep + "||" + dates
+
     df = client.query(sql).to_dataframe()
-    df['Period']=final
-    
-    new_date = date_object - timedelta(days=int(days+1))
+    df['Period'] = final
+
+    new_date = n_days_ago
     print(new_date)
     sql2 = """
-        SELECT SUM(totals.transactions)/SUM(totals.visits) AS conversion_rate, device.deviceCategory AS device,IF(totals.newVisits IS NOT NULL, "New Visitor", "Returning Visitor") userType,
+        SELECT SUM(totals.transactions)/SUM(totals.visits) AS conversion_rate,device.deviceCategory AS device,IF(totals.newVisits IS NOT NULL, "New Visitor", "Returning Visitor") userType,
         FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*`
         WHERE _TABLE_SUFFIX BETWEEN
         FORMAT_DATE("%Y%m%d", DATE_SUB("{date}", INTERVAL {D} DAY)) AND
-        FORMAT_DATE("%Y%m%d", "{date}")
+        FORMAT_DATE("%Y%m%d",DATE_SUB("{date}", INTERVAL 1 DAY))
         group by  device,userType
-        order by device
-    """.format(**{"D": days, "date": new_date})
-    
-    date_object2 = datetime.strptime(str(new_date), '%Y-%m-%d').date()
-    n_days_ago2 = date_object2 - timedelta(days=days)
-    datep2 = n_days_ago2.strftime('%Y-%m-%d')
-    final2 = str(new_date)+ "||"+datep2
-    df2 = client.query(sql2).to_dataframe()
-    df2['Period']=final2
-    
-    df3 = df.append(df2, ignore_index=True)
-    
-    return Response(df3.to_json(orient="records"), mimetype='application/json')
+        order by device;""".format(**{"D": days, "date": new_date})
 
+    dates2 = new_date - timedelta(days=days)
+    datep2 =new_date - timedelta(days=1)
+    final2 = str(datep2) + "||" + str(dates2)
+
+
+    df2 = client.query(sql2).to_dataframe()
+    df2['Period'] = final2
+
+    df3 = df.append(df2, ignore_index=True)
+
+    return Response(df3.to_json(orient="records"), mimetype='application/json')
 
 @app.route('/report/cvr/<int:days>/csv', methods=['GET'])
 def GetConvertionRateCSV(days):
@@ -177,7 +179,6 @@ def GetConvertionRateCSV(days):
     ]
 
     response = Response(generate(log), mimetype='text/csv')
-    # add a filename
     response.headers.set("Content-Disposition", "attachment", filename="conversion_rate.csv")
     return response
 
@@ -188,7 +189,7 @@ def GetUserDetails(id):
     print('profile id ', id)
     """List of query browser"""
     print('List all query details')
-    # 2248281639583218707
+    # try 2248281639583218707
     sql = """
                 SELECT *
                 FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*`
