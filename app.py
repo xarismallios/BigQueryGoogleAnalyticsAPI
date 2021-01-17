@@ -167,11 +167,13 @@ def GetConvertionRateCSV(days):
     data = json.loads(data)
     cvr = data['cvr']['0']
     
-    given = '01-08-2017'
+    given = '02-08-2017'
     date_object = datetime.strptime(given, '%d-%m-%Y').date()
     n_days_ago = date_object - timedelta(days=days)
+    n_days_ago2 = date_object - timedelta(days=1)
+    dates = n_days_ago2.strftime('%d-%m-%Y')
     datep = n_days_ago.strftime('%d-%m-%Y')
-    final = datep + "||"+given
+    final = datep + "||" + dates
 
 
     log = [
