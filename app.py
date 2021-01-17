@@ -200,17 +200,8 @@ def GetUserDetails(id):
     df = client.query(sql).to_dataframe()
     data = df.to_json()
     data = json.loads(data)
-    print(data)
     try:
         if data:
-            if data['hits']['0'][0]['transaction']['transactionCoupon'] is None:
-                    coupon=0
-            else :
-                    coupon=1
-            if data['totals']['0']['transactions'] is None:
-                    hasPurchases=0
-            else :
-                     hasPurchases=1
 
 
             product_list = data['hits']['0'][0]['product']
@@ -223,51 +214,63 @@ def GetUserDetails(id):
                     "productQuantity": product['productQuantity']
                 })
 
+            usedCoupon = 0
+            if data['hits']['0'][0]['transaction']['transactionCoupon'] is None:
+                usedCoupon = 0
+            else:
+                usedCoupon = 1
+
+            hasPurchase = 0
+            if data['totals']['0']['transactions'] is None:
+                hasPurchase = 0
+            else:
+                hasPurchase = 1
+
             response = jsonify({
-            'status': 'success',
-            'data' : {"pseudoUserId": str(id),
-                        "deviceCategory": data['device']['0']['deviceCategory'],
-                        "platform": data['device']['0']['operatingSystem'],
-                        "dataSource": data['hits']['0'][0]['page']['pagePath'],
-                        "hasPurchase": str(hasPurchases),
-                        "usedCoupon": str(coupon),
-                        "userRevenue": data['totals']['0']['totalTransactionRevenue'],
-                        "acquisitionChannelGroup": data['channelGrouping']['0'],
-                        "acquisitionSource": data['trafficSource']['0']['source'],
-                        "acquisitionMedium": data['trafficSource']['0']['medium'],
-                        "acquisitionCampaign": data['trafficSource']['0']['campaign'],
-                        "userType": data['socialEngagementType']['0'],
-                        "firstSeen": data['visitStartTime']['0'],
-                        "lastSeen": data['visitStartTime']['0'],
-                        "numberVisits": data['totals']['0']['visits'],
-                        "numberPurchases": data['totals']['0']['transactions'],
-                        "purchaseActivities": [{
-                                    "activityTime": data['totals']['0']['timeOnSite'],
-                                    "channelGrouping": data['channelGrouping']['0'],
-                                    "source": data['trafficSource']['0']['source'],
-                                    "medium": data['trafficSource']['0']['medium'],
-                                    "campaign": data['trafficSource']['0']['campaign'],
-                                    "landingPagePath": data['hits']['0'][0]['appInfo']['landingScreenName'],
-                                    "ecommerce": {
-                                                    "transaction": {
-                                                            "transactionId": data['hits']['0'][0]['transaction']['transactionId'],
-                                                            "transactionRevenue": data['hits']['0'][0]['transaction']['transactionRevenue'],
-                                                            "transactionCoupon": data['hits']['0'][0]['transaction']['transactionCoupon'],
+                'status': 'success',
+                'data' : {"pseudoUserId": str(id),
+                            "deviceCategory": data['device']['0']['deviceCategory'],
+                            "platform": data['device']['0']['operatingSystem'],
+                            "dataSource": data['hits']['0'][0]['page']['pagePath'],
+                            "hasPurchase": hasPurchase,
+                            "usedCoupon": usedCoupon,
+                            "userRevenue": data['totals']['0']['totalTransactionRevenue'],
+                            "acquisitionChannelGroup": data['channelGrouping']['0'],
+                            "acquisitionSource": data['trafficSource']['0']['source'],
+                            "acquisitionMedium": data['trafficSource']['0']['medium'],
+                            "acquisitionCampaign": data['trafficSource']['0']['campaign'],
+                            "userType": data['channelGrouping']['0'],
+                            "firstSeen": data['hits']['0'][0]['page']['hostname'],
+                            "lastSeen": data['hits']['0'][0]['page']['pagePath'],
+                            "numberVisits": data['totals']['0']['visits'],
+                            "numberPurchases": data['totals']['0']['transactions'],
+                            "purchaseActivities": [{
+                                        "activityTime":data['totals']['0']['timeOnSite'] ,
+                                        "channelGrouping": data['channelGrouping']['0'],
+                                        "source": data['trafficSource']['0']['source'],
+                                        "medium": data['trafficSource']['0']['medium'],
+                                        "campaign": data['trafficSource']['0']['campaign'],
+                                        "landingPagePath": data['hits']['0'][0]['appInfo']['landingScreenName'],
+                                        "ecommerce": {
+                                                        "transaction": {
+                                                                "transactionId": data['hits']['0'][0]['transaction']['transactionId'],
+                                                                "transactionRevenue": data['hits']['0'][0]['transaction']['transactionRevenue'],
+                                                                "transactionCoupon": data['hits']['0'][0]['transaction']['transactionCoupon'],
+                                                        },
+                                                        "products": product_list_arr
                                                     },
-                                                    "products": product_list_arr
-                                                },
-                                    }],
-                           "sessionId": data['visitId']['0'],
-                           "sessionDate": datetime.datetime.fromtimestamp(int(data['visitStartTime']['0']) / 1e3)
-                    }
-            })
+                                        }],
+                            "sessionId": data['visitId']['0'],
+                            "sessionDate": datetime.fromtimestamp(int(data['visitStartTime']['0']) / 1e3)
+                        }
+                })
             response.status_code = 201
             return response
         else:
             response = jsonify({
-                    'status': 'Fail',
-                    'message': 'User ID is wrong'
-                    })
+                'status': 'Fail',
+                'message': 'User ID is wrong'
+                })
             response.status_code = 201
             return response
     except:
@@ -277,6 +280,7 @@ def GetUserDetails(id):
             })
         response.status_code = 201
         return response
+
 
 def generate(log):
     data = StringIO()
