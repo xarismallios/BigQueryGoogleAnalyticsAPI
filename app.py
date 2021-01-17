@@ -27,7 +27,6 @@ def index():
 
 @app.route('/report/cvr/<int:days>', methods=['GET'])
 def GetConversionRate(days):
-    print('days ', days)
     sql = """
                     SELECT
                     SUM( totals.transactions )/SUM( totals.visits ) as cvr
@@ -35,24 +34,25 @@ def GetConversionRate(days):
                     WHERE
                     _TABLE_SUFFIX BETWEEN
                     FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-02'), INTERVAL {} DAY)) AND
-                    FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-02'), INTERVAL 1 DAY));
+                    FORMAT_DATE("%Y%m%d", DATE_SUB(DATE('2017-08-02'), INTERVAL 0 DAY));
     """.format(days)
     df = client.query(sql).to_dataframe()
     data = df.to_json()
     data = json.loads(data)
     cvr = data['cvr']['0']
-    
-    given = '01-08-2017'
+
+    given = '02-08-2017'
     date_object = datetime.strptime(given, '%d-%m-%Y').date()
     n_days_ago = date_object - timedelta(days=days)
+    n_days_ago2 = date_object - timedelta(days=1)
+    dates= n_days_ago2.strftime('%d-%m-%Y')
     datep = n_days_ago.strftime('%d-%m-%Y')
-    final = datep + "||"+given
-
+    final = datep + "||" + dates
 
     response = jsonify({
         'status': 'success',
         'conversion_rate': float(cvr),
-        'period':str(final)
+        'period': str(final)
     })
     response.status_code = 201
     return response
